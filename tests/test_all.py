@@ -37,5 +37,40 @@ def load_tests(loader, tests, pattern):
     return suite
 
 
+# `--jobs 3`: the groups run as 3 parallel processes, each with its own OUT directory (the fixtures are
+# built once per process and many cases reuse output names). Split balanced by measured group times.
+GROUPS_3 = (("test_picture", "test_cut_copy", "test_asr", "test_accel"),
+            ("test_orchestration", "test_editing"),
+            ("test_delivery", "test_analysis", "test_audio"))
+
+
+def run_parallel(jobs):
+    import os
+    import subprocess
+    import tempfile
+    here = Path(__file__).resolve().parent
+    names = [m.__name__ for m in MODULES]
+    groups = GROUPS_3 if jobs == 3 else [names[i::jobs] for i in range(jobs)]
+    assert sorted(n for g in groups for n in g) == sorted(names), "every group module runs exactly once"
+    base = Path(os.environ.get("OUT", here / "out"))
+    procs = []
+    for k, group in enumerate(groups):
+        env = dict(os.environ, OUT=str(base / f"shard-{k}"))
+        log = tempfile.TemporaryFile()
+        cmd = [sys.executable, "-m", "unittest", "-v", *group]
+        procs.append((k, group, subprocess.Popen(cmd, cwd=str(here), env=env, stdout=log, stderr=subprocess.STDOUT), log))
+    rc = 0
+    for k, group, proc, log in procs:  # print each shard's whole log when it finishes, in order
+        proc.wait()
+        log.seek(0)
+        print(f"===== shard {k}: {' '.join(group)} (exit {proc.returncode}) =====", flush=True)
+        sys.stdout.buffer.write(log.read())
+        sys.stdout.flush()
+        rc = rc or proc.returncode
+    return rc
+
+
 if __name__ == "__main__":
+    if "--jobs" in sys.argv:
+        sys.exit(run_parallel(int(sys.argv[sys.argv.index("--jobs") + 1])))
     unittest.main(verbosity=2)

@@ -99,7 +99,7 @@ jobs:
         with:
           name: ffmpeg-listings-${{ matrix.os }}-py${{ matrix.python }}
           path: listings/
-      - run: python tests/test_all.py
+      - run: python tests/test_all.py --jobs 3
       # A handful of tests here drive the tools through POSIX shell shims (fake ffmpeg on PATH)
       # to force specific FFmpeg 6/7/8/9 fixture layouts; those are individually skipIf'd on
       # Windows (not portable), not the whole file -- everything else (schema, reencodes_*,
@@ -174,7 +174,7 @@ jobs:
         with:
           name: ffmpeg-listings-ubuntu-latest-ffmpeg5
           path: listings/
-      - run: python tests/test_all.py
+      - run: python tests/test_all.py --jobs 3
       - run: python tests/test_contract.py
         if: "!cancelled()"
 
@@ -209,7 +209,7 @@ jobs:
         with:
           name: ffmpeg-listings-debian-trixie-ffmpeg7
           path: listings/
-      - run: python3 tests/test_all.py
+      - run: python3 tests/test_all.py --jobs 3
       - run: python3 tests/test_contract.py
         if: "!cancelled()"
 
